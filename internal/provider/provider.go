@@ -2,52 +2,66 @@ package provider
 
 import (
 	"context"
-	"net/http"
-
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/labd/go-apollostudio-sdk/pkg/apollostudio"
 )
 
-// Ensure ScaffoldingProvider satisfies various provider interfaces.
-var _ provider.Provider = &ScaffoldingProvider{}
-var _ provider.ProviderWithMetadata = &ScaffoldingProvider{}
+var (
+	_ provider.Provider             = &ApollostudioProvider{}
+	_ provider.ProviderWithMetadata = &ApollostudioProvider{}
+)
 
-// ScaffoldingProvider defines the provider implementation.
-type ScaffoldingProvider struct {
+// ApollostudioProvider defines the provider implementation.
+type ApollostudioProvider struct {
 	// version is set to the provider version on release, "dev" when the
 	// provider is built and ran locally, and "test" when running acceptance
 	// testing.
 	version string
 }
 
-// ScaffoldingProviderModel describes the provider data model.
-type ScaffoldingProviderModel struct {
-	Endpoint types.String `tfsdk:"endpoint"`
+// ApollostudioProviderModel describes the provider data model.
+type ApollostudioProviderModel struct {
+	ApiKey types.String `tfsdk:"api_key"`
 }
 
-func (p *ScaffoldingProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "scaffolding"
+func New(version string) func() provider.Provider {
+	return func() provider.Provider {
+		return &ApollostudioProvider{
+			version: version,
+		}
+	}
+}
+
+func (p *ApollostudioProvider) Metadata(
+	_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse,
+) {
+	resp.TypeName = "apollostudio"
 	resp.Version = p.version
 }
 
-func (p *ScaffoldingProvider) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
+func (p *ApollostudioProvider) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
 	return tfsdk.Schema{
 		Attributes: map[string]tfsdk.Attribute{
-			"endpoint": {
-				MarkdownDescription: "Example provider attribute",
-				Optional:            true,
+			"api_key": {
 				Type:                types.StringType,
+				MarkdownDescription: "Apollo studio graph API key",
+				Required:            true,
+				Sensitive:           true,
 			},
 		},
 	}, nil
 }
 
-func (p *ScaffoldingProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	var data ScaffoldingProviderModel
+func (p *ApollostudioProvider) Configure(
+	ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse,
+) {
+	var data ApollostudioProviderModel
 
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 
@@ -55,31 +69,39 @@ func (p *ScaffoldingProvider) Configure(ctx context.Context, req provider.Config
 		return
 	}
 
-	// Configuration values are now available.
-	// if data.Endpoint.IsNull() { /* ... */ }
+	key := data.ApiKey.ValueString()
 
-	// Example client configuration for data sources and resources
-	client := http.DefaultClient
+	if key == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("api_key"),
+			"Missing Apollo Studio API key",
+			"The provider cannot create the Apollo Studio API client as there is a missing or empty value for the Apollo Studio API key. "+
+				"Set the API key value in the configuration. "+
+				"If either is already set, ensure the value is not empty.",
+		)
+	}
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	client := apollostudio.NewClient(
+		apollostudio.ClientOpts{
+			APIKey: key,
+		},
+	)
 	resp.DataSourceData = client
 	resp.ResourceData = client
 }
 
-func (p *ScaffoldingProvider) Resources(ctx context.Context) []func() resource.Resource {
-	return []func() resource.Resource{
-		NewExampleResource,
-	}
-}
-
-func (p *ScaffoldingProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+func (p *ApollostudioProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
-		NewExampleDataSource,
+		NewValidationDataSource,
 	}
 }
 
-func New(version string) func() provider.Provider {
-	return func() provider.Provider {
-		return &ScaffoldingProvider{
-			version: version,
-		}
+func (p *ApollostudioProvider) Resources(ctx context.Context) []func() resource.Resource {
+	return []func() resource.Resource{
+		NewSubGraphResource,
 	}
 }
