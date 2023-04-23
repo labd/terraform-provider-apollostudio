@@ -1,14 +1,16 @@
-package provider
+package sub_graph
 
 import (
 	"context"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/labd/go-apollostudio-sdk/pkg/apollostudio"
+	"strings"
 	"time"
 )
 
@@ -30,8 +32,7 @@ type SubGraphResourceModel struct {
 	SubGraphURL    types.String `tfsdk:"sub_graph_url"`
 	SubGraphSchema types.String `tfsdk:"sub_graph_schema"`
 	SubGraphName   types.String `tfsdk:"sub_graph_name"`
-	SchemaHash     types.String `tfsdk:"schema_hash"`
-	SDL            types.String `tfsdk:"sdl"`
+	Identifier     types.String `tfsdk:"identifier"`
 	Revision       types.String `tfsdk:"revision"`
 	CreatedAt      types.String `tfsdk:"created_at"`
 	UpdatedAt      types.String `tfsdk:"updated_at"`
@@ -74,22 +75,6 @@ func (r *SubGraphResource) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Di
 				Type:                types.StringType,
 				Optional:            true,
 			},
-			"schema_hash": {
-				MarkdownDescription: "Schema hash",
-				Type:                types.StringType,
-				Computed:            true,
-				PlanModifiers: tfsdk.AttributePlanModifiers{
-					resource.UseStateForUnknown(),
-				},
-			},
-			"sdl": {
-				MarkdownDescription: "SDL schema",
-				Type:                types.StringType,
-				Computed:            true,
-				PlanModifiers: tfsdk.AttributePlanModifiers{
-					resource.UseStateForUnknown(),
-				},
-			},
 			"revision": {
 				MarkdownDescription: "Schema revision",
 				Type:                types.StringType,
@@ -97,6 +82,11 @@ func (r *SubGraphResource) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Di
 				PlanModifiers: tfsdk.AttributePlanModifiers{
 					resource.UseStateForUnknown(),
 				},
+			},
+			"identifier": {
+				MarkdownDescription: "Resource identifier for terraform",
+				Type:                types.StringType,
+				Computed:            true,
 			},
 			"created_at": {
 				MarkdownDescription: "Schema creation date",
@@ -115,7 +105,6 @@ func (r *SubGraphResource) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Di
 func (r *SubGraphResource) Configure(
 	ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse,
 ) {
-	// Prevent panic if the provider has not been configured.
 	if req.ProviderData == nil {
 		return
 	}
@@ -140,7 +129,6 @@ func (r *SubGraphResource) Configure(
 func (r *SubGraphResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 	var data *SubGraphResourceModel
 
-	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 
 	if resp.Diagnostics.HasError() {
@@ -169,6 +157,22 @@ func (r *SubGraphResource) Create(ctx context.Context, req resource.CreateReques
 		)
 	}
 
+	rr, err := r.client.ReadSubGraph(
+		ctx, &apollostudio.ReadOptions{
+			SchemaID:      schemaId,
+			SchemaVariant: schemaVariant,
+			SubGraphName:  subGraphName,
+		},
+	)
+
+	if rr.Name != "" {
+		resp.Diagnostics.AddError(
+			"Sub Graph already exists",
+			fmt.Sprintf("Sub Graph `%s` already exits, if you want to submit pre-existing graph, please import the resource"),
+		)
+		return
+	}
+
 	result, err := r.client.SubmitSubGraph(
 		ctx, &apollostudio.SubmitOptions{
 			SchemaID:       schemaId,
@@ -184,20 +188,25 @@ func (r *SubGraphResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	if result.Errors != nil {
+	if len(result.Errors) > 0 {
 		for _, e := range result.Errors {
+			tflog.Info(ctx, e.Message)
 			resp.Diagnostics.AddError(e.Code, e.Message)
 		}
+		return
 	}
 
-	data.SchemaHash = types.StringValue(result.CompositionConfig.SchemaHash)
 	tflog.Trace(ctx, "submit sub graph applied")
 
-	if result.WasCreated {
-		tflog.Trace(ctx, "new sub graph created")
+	if !result.WasCreated {
+		tflog.Trace(ctx, "new sub graph was not created, submitted only")
+		resp.Diagnostics.AddWarning(
+			"No new subgraph was created",
+			" This may occur when someone creates a new subgraph while Terraform is applying changes",
+		)
 	}
 
-	rr, err := r.client.ReadSubGraph(
+	rr, err = r.client.ReadSubGraph(
 		ctx, &apollostudio.ReadOptions{
 			SchemaID:      schemaId,
 			SchemaVariant: schemaVariant,
@@ -205,17 +214,28 @@ func (r *SubGraphResource) Create(ctx context.Context, req resource.CreateReques
 		},
 	)
 
+	if rr.Name == "" {
+		resp.Diagnostics.AddError("Resource not found", "Unable to read sub graph")
+		return
+	}
+
 	if err != nil {
 		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read sub graph, got error: %s", err))
 		return
 	}
 
+	id := fmt.Sprintf("%s_%s_%s", schemaId, schemaVariant, subGraphName)
+
+	tflog.Info(ctx, id)
+
 	data.Revision = types.StringValue(rr.Revision)
-	data.SDL = types.StringValue(rr.ActivePartialSchema.Sdl)
+	data.Identifier = types.StringValue(id)
 	data.CreatedAt = types.StringValue(rr.CreatedAt.Format(time.RFC850))
 	data.UpdatedAt = types.StringValue(rr.UpdatedAt.Format(time.RFC850))
 
 	tflog.Trace(ctx, "updated sub graph schema")
+
+	tflog.Info(ctx, fmt.Sprintf("MY VALUE: %v", data.Identifier.ValueString()))
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -223,26 +243,15 @@ func (r *SubGraphResource) Create(ctx context.Context, req resource.CreateReques
 func (r *SubGraphResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 	var data *SubGraphResourceModel
 
-	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	tflog.Info(ctx, "Reading sub graph info...")
-
 	schemaId := data.SchemaID.ValueString()
 	schemaVariant := data.SchemaVariant.ValueString()
 	subGraphName := data.SubGraphName.ValueString()
-
-	tflog.Debug(
-		ctx, "reading sub graph schema", map[string]interface{}{
-			"schema_id":      schemaId,
-			"schema_variant": schemaVariant,
-			"sub_graph_name": subGraphName,
-		},
-	)
 
 	if subGraphName == "" {
 		resp.Diagnostics.AddWarning(
@@ -265,11 +274,13 @@ func (r *SubGraphResource) Read(ctx context.Context, req resource.ReadRequest, r
 	}
 
 	data.Revision = types.StringValue(result.Revision)
-	data.SDL = types.StringValue(result.ActivePartialSchema.Sdl)
 	data.CreatedAt = types.StringValue(result.CreatedAt.Format(time.RFC850))
 	data.UpdatedAt = types.StringValue(result.UpdatedAt.Format(time.RFC850))
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+
+	tflog.Trace(ctx, "updated sub graph state")
+
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -285,16 +296,11 @@ func (r *SubGraphResource) Update(ctx context.Context, req resource.UpdateReques
 		return
 	}
 
-	tflog.Info(
-		ctx, "Applying sub graph", map[string]interface{}{
-			"SDL": data.SDL,
-		},
-	)
-
 	schemaId := data.SchemaID.ValueString()
 	schemaVariant := data.SchemaVariant.ValueString()
 	subGraphSchema := data.SubGraphSchema.ValueString()
 	subGraphName := data.SubGraphName.ValueString()
+	subGraphURL := data.SubGraphURL.ValueString()
 
 	tflog.Debug(
 		ctx, "submitting sub graph schema", map[string]interface{}{
@@ -312,18 +318,38 @@ func (r *SubGraphResource) Update(ctx context.Context, req resource.UpdateReques
 		)
 	}
 
+	var previd types.String
+	diags := req.State.GetAttribute(ctx, path.Root("identifier"), &previd)
+	resp.Diagnostics.Append(diags...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	id := fmt.Sprintf("%s_%s_%s", schemaId, schemaVariant, subGraphName)
+
+	if id != previd.ValueString() {
+		err := r.client.RemoveSubGraph(
+			ctx, &apollostudio.RemoveOptions{
+				SchemaID:      strings.Split(previd.ValueString(), "_")[0],
+				SchemaVariant: strings.Split(previd.ValueString(), "_")[1],
+				SubGraphName:  strings.Split(previd.ValueString(), "_")[2],
+			},
+		)
+
+		if err != nil {
+			resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to remove sub graph, got error: %s", err))
+			return
+		}
+	}
+
 	result, err := r.client.SubmitSubGraph(
 		ctx, &apollostudio.SubmitOptions{
 			SchemaID:       schemaId,
 			SchemaVariant:  schemaVariant,
 			SubGraphSchema: []byte(subGraphSchema),
 			SubGraphName:   subGraphName,
-		},
-	)
-
-	tflog.Info(
-		ctx, "After submitting sub graph", map[string]interface{}{
-			"SDL": data.SDL,
+			SubGraphURL:    subGraphURL,
 		},
 	)
 
@@ -338,9 +364,6 @@ func (r *SubGraphResource) Update(ctx context.Context, req resource.UpdateReques
 		}
 	}
 
-	data.SchemaHash = types.StringValue(result.CompositionConfig.SchemaHash)
-	tflog.Trace(ctx, "submit sub graph applied")
-
 	rr, err := r.client.ReadSubGraph(
 		ctx, &apollostudio.ReadOptions{
 			SchemaID:      schemaId,
@@ -354,16 +377,17 @@ func (r *SubGraphResource) Update(ctx context.Context, req resource.UpdateReques
 		return
 	}
 
+	if types.StringValue(id) != data.Identifier {
+		// new sub graph was created, we need to re-assign new identifier
+		data.Identifier = types.StringValue(id)
+		tflog.Trace(ctx, "sub graph re-recreated on update")
+	} else {
+		tflog.Trace(ctx, "updated sub graph schema")
+	}
+
 	data.Revision = types.StringValue(rr.Revision)
-	data.SDL = types.StringValue(rr.ActivePartialSchema.Sdl)
 	data.CreatedAt = types.StringValue(rr.CreatedAt.Format(time.RFC850))
 	data.UpdatedAt = types.StringValue(rr.UpdatedAt.Format(time.RFC850))
-
-	tflog.Info(
-		ctx, "Sub graph read after update", map[string]interface{}{
-			"SDL": data.SDL,
-		},
-	)
 
 	tflog.Trace(ctx, "updated sub graph schema")
 

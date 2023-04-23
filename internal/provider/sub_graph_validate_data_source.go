@@ -7,7 +7,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/labd/go-apollostudio-sdk/pkg/apollostudio"
 	"strings"
 )
@@ -25,11 +24,9 @@ type ValidationDataSource struct {
 
 // ValidationDataSourceModel describes the data source data model.
 type ValidationDataSourceModel struct {
-	SchemaID       types.String `tfsdk:"schema_id"`
-	SchemaVariant  types.String `tfsdk:"schema_variant"`
-	SubGraphSchema types.String `tfsdk:"sub_graph_schema"`
-	SubGraphName   types.String `tfsdk:"sub_graph_name"`
-	Changes        types.String `tfsdk:"changes"`
+	Schema  types.String `tfsdk:"schema"`
+	Name    types.String `tfsdk:"name"`
+	Changes types.String `tfsdk:"changes"`
 }
 
 func (d *ValidationDataSource) Metadata(
@@ -44,16 +41,6 @@ func (d *ValidationDataSource) GetSchema(ctx context.Context) (tfsdk.Schema, dia
 		MarkdownDescription: "Fields required to validate sub graph",
 
 		Attributes: map[string]tfsdk.Attribute{
-			"schema_id": {
-				MarkdownDescription: "Schema ID to validate against",
-				Required:            true,
-				Type:                types.StringType,
-			},
-			"schema_variant": {
-				MarkdownDescription: "Schema variant to validate against",
-				Type:                types.StringType,
-				Required:            true,
-			},
 			"sub_graph_schema": {
 				MarkdownDescription: "Sub Graph SDL schema",
 				Type:                types.StringType,
@@ -108,33 +95,13 @@ func (d *ValidationDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		return
 	}
 
-	schemaId := data.SchemaID.ValueString()
-	schemaVariant := data.SchemaVariant.ValueString()
-	subGraphSchema := data.SubGraphSchema.ValueString()
-	subGraphName := data.SubGraphName.ValueString()
-
-	tflog.Debug(
-		ctx, "Validating sub graph", map[string]interface{}{
-			"schema_id":        schemaId,
-			"schema_variant":   schemaVariant,
-			"sub_graph_schema": subGraphSchema,
-			"sub_graph_name":   subGraphName,
-		},
-	)
-
-	if subGraphName == "" {
-		resp.Diagnostics.AddWarning(
-			"Sub Graph name is empty",
-			"Sub Graph name is empty",
-		)
-	}
+	schema := data.Schema.ValueString()
+	name := data.Name.ValueString()
 
 	result, err := d.client.ValidateSubGraph(
 		ctx, &apollostudio.ValidateOptions{
-			SchemaID:       schemaId,
-			SchemaVariant:  schemaVariant,
-			SubGraphSchema: []byte(subGraphSchema),
-			SubGraphName:   subGraphName,
+			SubGraphSchema: []byte(schema),
+			SubGraphName:   name,
 		},
 	)
 
