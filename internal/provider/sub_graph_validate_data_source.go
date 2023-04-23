@@ -41,12 +41,12 @@ func (d *ValidationDataSource) GetSchema(ctx context.Context) (tfsdk.Schema, dia
 		MarkdownDescription: "Fields required to validate sub graph",
 
 		Attributes: map[string]tfsdk.Attribute{
-			"sub_graph_schema": {
+			"schema": {
 				MarkdownDescription: "Sub Graph SDL schema",
 				Type:                types.StringType,
 				Required:            true,
 			},
-			"sub_graph_name": {
+			"name": {
 				MarkdownDescription: "Sub Graph name",
 				Type:                types.StringType,
 				Optional:            true,
@@ -86,17 +86,16 @@ func (d *ValidationDataSource) Configure(
 }
 
 func (d *ValidationDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data ValidationDataSourceModel
+	var state ValidationDataSourceModel
 
-	// Read Terraform configuration data into the model
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
-
+	diags := req.Config.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	schema := data.Schema.ValueString()
-	name := data.Name.ValueString()
+	schema := state.Schema.ValueString()
+	name := state.Name.ValueString()
 
 	result, err := d.client.ValidateSubGraph(
 		ctx, &apollostudio.ValidateOptions{
@@ -106,7 +105,10 @@ func (d *ValidationDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	)
 
 	if err != nil {
-		resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable validate schema, got error: %s", err))
+		resp.Diagnostics.AddError(
+			"Client Error",
+			fmt.Sprintf("Unable validate schema, got error: %s", err),
+		)
 		return
 	}
 
@@ -117,19 +119,25 @@ func (d *ValidationDataSource) Read(ctx context.Context, req datasource.ReadRequ
 			return
 		}
 		for _, e := range errs {
-			resp.Diagnostics.AddError(e.Code, e.Message)
+			resp.Diagnostics.AddError(fmt.Sprintf("Sub Graph validation failed: %s", e.Code), e.Message)
 		}
 		return
 	}
 
 	if len(result.Changes()) > 0 {
-		data.Changes = types.StringValue(strings.Join(result.Changes(), ","))
-		resp.Diagnostics.AddWarning("Changes Detected", "Changes detected in sub graph")
+		state.Changes = types.StringValue(strings.Join(result.Changes(), ","))
+		resp.Diagnostics.AddWarning(
+			"Sub Graph changes detected",
+			fmt.Sprintf("%d changes detected on \"%s\" sub graph", len(result.Changes()), name),
+		)
 		for _, c := range result.Changes() {
 			resp.Diagnostics.AddWarning(c, "")
 		}
 	}
 
-	// Save data into Terraform state
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	diags = resp.State.Set(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 }

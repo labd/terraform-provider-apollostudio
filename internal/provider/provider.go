@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/labd/go-apollostudio-sdk/pkg/apollostudio"
+	"os"
 )
 
 var (
@@ -27,7 +28,8 @@ type ApollostudioProvider struct {
 
 // ApollostudioProviderModel describes the provider data model.
 type ApollostudioProviderModel struct {
-	ApiKey types.String `tfsdk:"api_key"`
+	ApiKey   types.String `tfsdk:"api_key"`
+	GraphRef types.String `tfsdk:"graph_ref"`
 }
 
 func New(version string) func() provider.Provider {
@@ -51,8 +53,13 @@ func (p *ApollostudioProvider) GetSchema(ctx context.Context) (tfsdk.Schema, dia
 			"api_key": {
 				Type:                types.StringType,
 				MarkdownDescription: "Apollo studio graph API key",
-				Required:            true,
+				Optional:            true,
 				Sensitive:           true,
+			},
+			"graph_ref": {
+				Type:                types.StringType,
+				MarkdownDescription: "Apollo studio graph ref",
+				Optional:            true,
 			},
 		},
 	}, nil
@@ -64,32 +71,57 @@ func (p *ApollostudioProvider) Configure(
 	var data ApollostudioProviderModel
 
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
-
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	key := data.ApiKey.ValueString()
+	var key string
+	if data.ApiKey.IsUnknown() || data.ApiKey.IsNull() {
+		key = os.Getenv("APOLLO_KEY")
+	} else {
+		key = data.ApiKey.ValueString()
+	}
+
+	var ref string
+	if data.GraphRef.IsUnknown() || data.GraphRef.IsNull() {
+		ref = os.Getenv("APOLLO_GRAPH_REF")
+	} else {
+		ref = data.GraphRef.ValueString()
+	}
 
 	if key == "" {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("api_key"),
 			"Missing Apollo Studio API key",
-			"The provider cannot create the Apollo Studio API client as there is a missing or empty value for the Apollo Studio API key. "+
-				"Set the API key value in the configuration. "+
-				"If either is already set, ensure the value is not empty.",
+			"Please set the api_key attribute or the APOLLO_KEY environment variable",
 		)
-	}
-
-	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	client := apollostudio.NewClient(
+	if ref == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("graph_ref"),
+			"Missing Apollo Studio Graph ref",
+			"Please set the graph_ref attribute or the APOLLO_GRAPH_REF environment variable",
+		)
+		return
+	}
+
+	client, err := apollostudio.NewClient(
 		apollostudio.ClientOpts{
-			APIKey: key,
+			APIKey:   key,
+			GraphRef: ref,
 		},
 	)
+
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to create Apollo Studio client",
+			"Please check your API key and Graph ref",
+		)
+		return
+	}
+
 	resp.DataSourceData = client
 	resp.ResourceData = client
 }
