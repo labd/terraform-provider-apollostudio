@@ -2,9 +2,6 @@ module github.com/hashicorp/terraform-provider-apollostudio
 
 go 1.18
 
-// temporal replace for local development
-replace github.com/labd/go-apollostudio-sdk => /home/deividas/git/go-apollostudio-sdk
-
 require (
 	github.com/hashicorp/terraform-plugin-docs v0.13.0
 	github.com/hashicorp/terraform-plugin-framework v1.1.1
