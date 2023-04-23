@@ -40,7 +40,12 @@ func (d *ValidationDataSource) Metadata(
 
 func (d *ValidationDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Fields required to validate sub graph",
+		MarkdownDescription: "This data source is used to apply schema validation checks. " +
+			"It applies Composition and Operation checks to the provided schema. If the schema is invalid, " +
+			"the data source will return an error. If the schema is valid, the data source will return the " +
+			"schema name and a list of changes detected on the sub graph. " +
+			"More information about schema validation can be found in the " +
+			"[Apollo Studio documentation](https://www.apollographql.com/docs/graphos/delivery/schema-checks/).",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
 				MarkdownDescription: "The ID of the sub graph",

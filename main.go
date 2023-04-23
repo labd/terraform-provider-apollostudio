@@ -35,8 +35,7 @@ func main() {
 	flag.Parse()
 
 	opts := providerserver.ServeOpts{
-		// Address: "registry.terraform.io/hashicorp/apollostudio",
-		Address: "hashicorp.com/edu/apollo-studio",
+		Address: "registry.terraform.io/labd/apollostudio",
 		Debug:   debug,
 	}
 

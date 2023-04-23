@@ -49,10 +49,10 @@ func (r *SubGraphResource) Metadata(
 
 func (r *SubGraphResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		// This description is used by the documentation generator and the language server.
-		MarkdownDescription: "Fields required to submit sub graph",
-		Version:             1,
-
+		MarkdownDescription: "This resource is used to manage subgraphs within the Federated Apollo schema. " +
+			"More information about the Apollo Federation subgraphs can be found " +
+			"[here](https://www.apollographql.com/docs/federation/v1/subgraphs/).",
+		Version: 1,
 		Attributes: map[string]schema.Attribute{
 			"url": schema.StringAttribute{
 				MarkdownDescription: "The URL of the sub graph endpoint",
@@ -79,7 +79,6 @@ func (r *SubGraphResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 			"revision": schema.StringAttribute{
 				MarkdownDescription: "The revision of the sub graph",
 				Computed:            true,
-				Optional:            true,
 			},
 			"created_at": schema.StringAttribute{
 				MarkdownDescription: "The creation date of the sub graph",
