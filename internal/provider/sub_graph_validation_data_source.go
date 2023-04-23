@@ -3,10 +3,12 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-provider-apollostudio/internal/utils"
 	"github.com/labd/go-apollostudio-sdk/pkg/apollostudio"
 	"strings"
 )
@@ -24,6 +26,7 @@ type ValidationDataSource struct {
 
 // ValidationDataSourceModel describes the data source data model.
 type ValidationDataSourceModel struct {
+	ID      types.String `tfsdk:"id"`
 	Schema  types.String `tfsdk:"schema"`
 	Name    types.String `tfsdk:"name"`
 	Changes types.String `tfsdk:"changes"`
@@ -35,29 +38,31 @@ func (d *ValidationDataSource) Metadata(
 	resp.TypeName = req.ProviderTypeName + "_sub_graph_validation"
 }
 
-func (d *ValidationDataSource) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
-		// This description is used by the documentation generator and the language server.
+func (d *ValidationDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
 		MarkdownDescription: "Fields required to validate sub graph",
-
-		Attributes: map[string]tfsdk.Attribute{
-			"schema": {
-				MarkdownDescription: "Sub Graph SDL schema",
-				Type:                types.StringType,
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				MarkdownDescription: "The ID of the sub graph",
+				Computed:            true,
+			},
+			"schema": schema.StringAttribute{
+				MarkdownDescription: "The sub graph SDL schema",
 				Required:            true,
 			},
-			"name": {
-				MarkdownDescription: "Sub Graph name",
-				Type:                types.StringType,
-				Optional:            true,
+			"name": schema.StringAttribute{
+				MarkdownDescription: "The sub graph name",
+				Required:            true,
+				Validators: []validator.String{
+					stringvalidator.LengthBetween(1, 64),
+				},
 			},
-			"changes": {
-				MarkdownDescription: "Last generated changes",
-				Type:                types.StringType,
+			"changes": schema.StringAttribute{
+				MarkdownDescription: "The sub graph changes",
 				Computed:            true,
 			},
 		},
-	}, nil
+	}
 }
 
 func (d *ValidationDataSource) Configure(
@@ -94,12 +99,25 @@ func (d *ValidationDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		return
 	}
 
-	schema := state.Schema.ValueString()
+	s := state.Schema.ValueString()
 	name := state.Name.ValueString()
+
+	// we are checking if schema with provided name already exists
+	// because validation may succeed even if provided schema does exist
+	graph, err := d.client.GetSubGraph(ctx, name)
+	utils.ProcessError(&resp.Diagnostics, err, "Operational errors when reading sub graph", "Client Error")
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if graph.Name == "" {
+		resp.Diagnostics.AddError("Sub graph not found", fmt.Sprintf("Sub graph \"%s\" not found", name))
+		return
+	}
 
 	result, err := d.client.ValidateSubGraph(
 		ctx, &apollostudio.ValidateOptions{
-			SubGraphSchema: []byte(schema),
+			SubGraphSchema: []byte(s),
 			SubGraphName:   name,
 		},
 	)
@@ -135,6 +153,7 @@ func (d *ValidationDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		}
 	}
 
+	state.ID = types.StringValue(name)
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
 	if resp.Diagnostics.HasError() {

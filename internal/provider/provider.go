@@ -2,21 +2,25 @@ package provider
 
 import (
 	"context"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/labd/go-apollostudio-sdk/pkg/apollostudio"
 	"os"
+	"regexp"
+	"time"
 )
 
 var (
-	_ provider.Provider             = &ApollostudioProvider{}
-	_ provider.ProviderWithMetadata = &ApollostudioProvider{}
+	_ provider.Provider = &ApollostudioProvider{}
 )
+
+const retryTimeout = 5 * time.Second
 
 // ApollostudioProvider defines the provider implementation.
 type ApollostudioProvider struct {
@@ -47,22 +51,30 @@ func (p *ApollostudioProvider) Metadata(
 	resp.Version = p.version
 }
 
-func (p *ApollostudioProvider) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
-		Attributes: map[string]tfsdk.Attribute{
-			"api_key": {
-				Type:                types.StringType,
+func (p *ApollostudioProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		MarkdownDescription: "The Apollo Studio provider allows you to manage your Apollo Studio Graphs and Subgraphs.",
+		Attributes: map[string]schema.Attribute{
+			"api_key": schema.StringAttribute{
 				MarkdownDescription: "Apollo studio graph API key",
 				Optional:            true,
 				Sensitive:           true,
+				Validators: []validator.String{
+					stringvalidator.LengthAtLeast(1),
+				},
 			},
-			"graph_ref": {
-				Type:                types.StringType,
+			"graph_ref": schema.StringAttribute{
 				MarkdownDescription: "Apollo studio graph ref",
 				Optional:            true,
+				Validators: []validator.String{
+					stringvalidator.RegexMatches(
+						regexp.MustCompilePOSIX(`^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+$`),
+						"Invalid graph ref, should be in the format of <graph-name>@<variant-name>",
+					),
+				},
 			},
 		},
-	}, nil
+	}
 }
 
 func (p *ApollostudioProvider) Configure(
@@ -77,7 +89,7 @@ func (p *ApollostudioProvider) Configure(
 
 	var key string
 	if data.ApiKey.IsUnknown() || data.ApiKey.IsNull() {
-		key = os.Getenv("APOLLO_KEY")
+		key = os.Getenv("APOLLO_API_KEY")
 	} else {
 		key = data.ApiKey.ValueString()
 	}

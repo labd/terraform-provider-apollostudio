@@ -3,10 +3,11 @@ package provider
 import (
 	"context"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	sdkresource "github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-provider-apollostudio/internal/utils"
@@ -19,8 +20,6 @@ var (
 	_ resource.ResourceWithConfigure   = &SubGraphResource{}
 	_ resource.ResourceWithImportState = &SubGraphResource{}
 )
-
-const retryTimeout = 5 * time.Second
 
 func NewSubGraphResource() resource.Resource {
 	return &SubGraphResource{}
@@ -48,49 +47,50 @@ func (r *SubGraphResource) Metadata(
 	resp.TypeName = req.ProviderTypeName + "_sub_graph"
 }
 
-func (r *SubGraphResource) GetSchema(ctx context.Context) (tfsdk.Schema, diag.Diagnostics) {
-	return tfsdk.Schema{
+func (r *SubGraphResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
 		// This description is used by the documentation generator and the language server.
 		MarkdownDescription: "Fields required to submit sub graph",
+		Version:             1,
 
-		Attributes: map[string]tfsdk.Attribute{
-			"url": {
+		Attributes: map[string]schema.Attribute{
+			"url": schema.StringAttribute{
 				MarkdownDescription: "The URL of the sub graph endpoint",
-				Type:                types.StringType,
+				Optional:            true,
+				Validators: []validator.String{
+					stringvalidator.LengthAtLeast(1),
+				},
+			},
+			"schema": schema.StringAttribute{
+				MarkdownDescription: "The SDL schema of the sub graph",
+				Required:            true,
+			},
+			"name": schema.StringAttribute{
+				MarkdownDescription: "The name of the sub graph",
+				Required:            true,
+				Validators: []validator.String{
+					stringvalidator.LengthBetween(1, 64),
+				},
+			},
+			"id": schema.StringAttribute{
+				MarkdownDescription: "The ID of the sub graph",
+				Computed:            true,
+			},
+			"revision": schema.StringAttribute{
+				MarkdownDescription: "The revision of the sub graph",
+				Computed:            true,
 				Optional:            true,
 			},
-			"schema": {
-				MarkdownDescription: "Sub Graph SDL schema",
-				Type:                types.StringType,
-				Required:            true,
-			},
-			"name": {
-				MarkdownDescription: "Sub Graph name",
-				Type:                types.StringType,
-				Required:            true,
-			},
-			"id": {
-				MarkdownDescription: "Resource identifier for terraform",
-				Type:                types.StringType,
+			"created_at": schema.StringAttribute{
+				MarkdownDescription: "The creation date of the sub graph",
 				Computed:            true,
 			},
-			"revision": {
-				MarkdownDescription: "Sub Graph revision",
-				Type:                types.NumberType,
-				Computed:            true,
-			},
-			"created_at": {
-				MarkdownDescription: "Schema creation date",
-				Type:                types.StringType,
-				Computed:            true,
-			},
-			"updated_at": {
-				MarkdownDescription: "Schema update date",
-				Type:                types.StringType,
+			"updated_at": schema.StringAttribute{
+				MarkdownDescription: "The last update date of the sub graph",
 				Computed:            true,
 			},
 		},
-	}, nil
+	}
 }
 
 func (r *SubGraphResource) Configure(
@@ -126,18 +126,18 @@ func (r *SubGraphResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	schema := plan.Schema.ValueString()
+	s := plan.Schema.ValueString()
 	name := plan.Name.ValueString()
 	url := plan.URL.ValueString()
 
-	graph, err := r.client.ReadSubGraph(ctx, name)
+	graph, err := r.client.GetSubGraph(ctx, name)
 	utils.ProcessError(&resp.Diagnostics, err, "Operational errors when reading sub graph", "Client Error")
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	_, err = r.client.GetLatestSchemaBuild(ctx)
-	utils.ProcessError(&resp.Diagnostics, err, "Federation schema contains errors", "Client Error")
+	utils.ProcessError(&resp.Diagnostics, err, "Federation s contains errors", "Client Error")
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -156,13 +156,13 @@ func (r *SubGraphResource) Create(ctx context.Context, req resource.CreateReques
 
 	result, err := r.client.SubmitSubGraph(
 		ctx, &apollostudio.SubmitOptions{
-			SubGraphSchema: []byte(schema),
+			SubGraphSchema: []byte(s),
 			SubGraphName:   name,
 			SubGraphURL:    url,
 		},
 	)
 
-	utils.ProcessError(&resp.Diagnostics, err, "Federation schema error while submitting sub graph", "Client Error")
+	utils.ProcessError(&resp.Diagnostics, err, "Federation s error while submitting sub graph", "Client Error")
 	if resp.Diagnostics.HasError() {
 		return
 	}
@@ -191,7 +191,7 @@ func (r *SubGraphResource) Read(ctx context.Context, req resource.ReadRequest, r
 	}
 
 	name := state.Name.ValueString()
-	result, err := r.client.ReadSubGraph(ctx, name)
+	result, err := r.client.GetSubGraph(ctx, name)
 
 	utils.ProcessError(&resp.Diagnostics, err, "Operational errors when reading sub graph", "Client Error")
 	if resp.Diagnostics.HasError() {
@@ -233,25 +233,16 @@ func (r *SubGraphResource) Update(ctx context.Context, req resource.UpdateReques
 		return
 	}
 
-	schema := plan.Schema.ValueString()
+	s := plan.Schema.ValueString()
 	name := plan.Name.ValueString()
 	url := plan.URL.ValueString()
-
-	if !plan.Name.Equal(state.ID) {
-		err := r.client.RemoveSubGraph(ctx, state.Name.ValueString())
-
-		utils.ProcessError(&resp.Diagnostics, err, "Operational errors when reading sub graph", "Client Error")
-		if resp.Diagnostics.HasError() {
-			return
-		}
-	}
 
 	err := sdkresource.RetryContext(
 		ctx, retryTimeout, func() *sdkresource.RetryError {
 			var err error
 			_, err = r.client.SubmitSubGraph(
 				ctx, &apollostudio.SubmitOptions{
-					SubGraphSchema: []byte(schema),
+					SubGraphSchema: []byte(s),
 					SubGraphName:   name,
 					SubGraphURL:    url,
 				},
@@ -260,12 +251,21 @@ func (r *SubGraphResource) Update(ctx context.Context, req resource.UpdateReques
 		},
 	)
 
-	utils.ProcessError(&resp.Diagnostics, err, "Federation schema error while submitting sub graph", "Client Error")
+	utils.ProcessError(&resp.Diagnostics, err, "Federation s error while submitting sub graph", "Client Error")
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	rr, err := r.client.ReadSubGraph(ctx, name)
+	if !plan.Name.Equal(state.ID) {
+		err := r.client.RemoveSubGraph(ctx, state.Name.ValueString())
+
+		utils.ProcessError(&resp.Diagnostics, err, "Operational errors when removing sub graph", "Client Error")
+		if resp.Diagnostics.HasError() {
+			return
+		}
+	}
+
+	rr, err := r.client.GetSubGraph(ctx, name)
 
 	utils.ProcessError(&resp.Diagnostics, err, "Operational errors when reading sub graph", "Client Error")
 	if resp.Diagnostics.HasError() {
@@ -277,6 +277,7 @@ func (r *SubGraphResource) Update(ctx context.Context, req resource.UpdateReques
 		plan.ID = plan.Name
 	}
 
+	plan.Revision = types.StringValue(rr.Revision)
 	plan.CreatedAt = types.StringValue(rr.CreatedAt.Format(time.RFC850))
 	plan.UpdatedAt = types.StringValue(rr.UpdatedAt.Format(time.RFC850))
 
