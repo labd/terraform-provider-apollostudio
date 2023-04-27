@@ -1,4 +1,4 @@
-module github.com/hashicorp/terraform-provider-apollostudio
+module github.com/labd/terraform-provider-apollostudio
 
 go 1.18
 
