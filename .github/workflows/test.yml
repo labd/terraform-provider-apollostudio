@@ -72,8 +72,8 @@ jobs:
       - env:
           # TODO: create dedicated apollo graph and key for acceptance testing
           # TF_ACC: "1"
-          # APOLLO_API_KEY: ${{ secrets.APOLLO_API_KEY }}
-          # APOLLO_GRAPH_REF: ${{ secrets.APOLLO_GRAPH_REF }}
+          APOLLO_API_KEY: ${{ secrets.APOLLO_API_KEY }}
+          APOLLO_GRAPH_REF: ${{ secrets.APOLLO_GRAPH_REF }}
 
         run: go test -v -cover ./internal/provider/
         timeout-minutes: 10
