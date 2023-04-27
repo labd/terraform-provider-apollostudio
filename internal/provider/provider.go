@@ -69,7 +69,7 @@ func (p *ApollostudioProvider) Schema(_ context.Context, _ provider.SchemaReques
 				Validators: []validator.String{
 					stringvalidator.RegexMatches(
 						regexp.MustCompilePOSIX(`^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+$`),
-						"Invalid graph ref, should be in the format of <graph-name>@<variant-name>",
+						"should be in the format of <graph-name>@<variant-name>",
 					),
 				},
 			},

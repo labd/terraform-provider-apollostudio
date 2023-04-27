@@ -15,7 +15,7 @@ The Apollo Studio provider allows you to manage your Apollo Studio Graphs and Su
 ```terraform
 provider "apollostudio" {
   api_key   = "service:my-graph-name:EXAMPLE-Example"
-  graph_ref = "service:my-graph-name@main"
+  graph_ref = "my-graph-name@main"
 }
 ```
 

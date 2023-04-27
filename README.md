@@ -128,6 +128,7 @@ git push --follow-tags
 ```
 
 ## TODO List
+- Create dedicated apollo graph and key for acceptance testing
 - Unit/acceptance tests should be expanded
 - Add support for other resources
 
