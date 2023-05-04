@@ -1,7 +1,7 @@
 package acctest
 
 import (
-	"github.com/labd/go-apollostudio-sdk/pkg/apollostudio"
+	"github.com/labd/apollostudio-go-sdk/pkg/apollostudio"
 	"os"
 )
 

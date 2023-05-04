@@ -11,7 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	sdkresource "github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-provider-apollostudio/internal/utils"
-	"github.com/labd/go-apollostudio-sdk/pkg/apollostudio"
+	"github.com/labd/apollostudio-go-sdk/pkg/apollostudio"
 	"time"
 )
 

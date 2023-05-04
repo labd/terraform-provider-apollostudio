@@ -9,7 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-provider-apollostudio/internal/utils"
-	"github.com/labd/go-apollostudio-sdk/pkg/apollostudio"
+	"github.com/labd/apollostudio-go-sdk/pkg/apollostudio"
 	"strings"
 )
 

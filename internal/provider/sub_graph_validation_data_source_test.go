@@ -7,7 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/hashicorp/terraform-provider-apollostudio/internal/acctest"
 	"github.com/hashicorp/terraform-provider-apollostudio/internal/utils"
-	"github.com/labd/go-apollostudio-sdk/pkg/apollostudio"
+	"github.com/labd/apollostudio-go-sdk/pkg/apollostudio"
 	"regexp"
 	"testing"
 )
