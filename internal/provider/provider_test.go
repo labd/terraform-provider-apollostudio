@@ -1,11 +1,12 @@
 package provider
 
 import (
-	"github.com/hashicorp/terraform-plugin-framework/providerserver"
-	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
-	"github.com/hashicorp/terraform-provider-apollostudio/internal/acctest"
 	"os"
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
+	"github.com/labd/terraform-provider-apollostudio/internal/acctest"
 )
 
 var testAccProtoV5ProviderFactories = map[string]func() (tfprotov5.ProviderServer, error){
