@@ -3,14 +3,15 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-provider-apollostudio/internal/utils"
 	"github.com/labd/apollostudio-go-sdk/pkg/apollostudio"
-	"strings"
+	"github.com/labd/terraform-provider-apollostudio/internal/utils"
 )
 
 var _ datasource.DataSource = &ValidationDataSource{}

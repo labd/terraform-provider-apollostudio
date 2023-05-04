@@ -3,13 +3,14 @@ package provider
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/hashicorp/terraform-provider-apollostudio/internal/acctest"
-	"github.com/hashicorp/terraform-provider-apollostudio/internal/utils"
 	"github.com/labd/apollostudio-go-sdk/pkg/apollostudio"
-	"regexp"
-	"testing"
+	"github.com/labd/terraform-provider-apollostudio/internal/utils"
 )
 
 func TestAccSubGraphValidation_ChangesAndErrors(t *testing.T) {

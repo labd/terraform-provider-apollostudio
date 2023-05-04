@@ -3,12 +3,13 @@ package provider
 import (
 	"context"
 	"fmt"
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/hashicorp/terraform-provider-apollostudio/internal/acctest"
-	"github.com/hashicorp/terraform-provider-apollostudio/internal/utils"
 	"github.com/labd/apollostudio-go-sdk/pkg/apollostudio"
-	"testing"
+	"github.com/labd/terraform-provider-apollostudio/internal/utils"
 )
 
 func TestAccSubGraph_basic(t *testing.T) {
