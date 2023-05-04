@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"flag"
-	"github.com/hashicorp/terraform-provider-apollostudio/internal/provider"
 	"log"
+
+	"github.com/labd/terraform-provider-apollostudio/internal/provider"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 )
