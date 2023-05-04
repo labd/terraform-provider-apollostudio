@@ -26,5 +26,5 @@ testacc:
 	TF_ACC=1 go test ./... -v $(TESTARGS) -timeout 120m
 
 update-sdk:
-	GO111MODULE=on go get github.com/labd/go-apollostudio-sdk
+	GO111MODULE=on go get github.com/labd/apollostudio-go-sdk
 	GO111MODULE=on go mod tidy

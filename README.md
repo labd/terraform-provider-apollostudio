@@ -1,4 +1,5 @@
 # Apollo Studio Terraform Provider
+
 Terraform provider for [Apollo Studio](https://www.apollographql.com/).
 
 The intention of this provider is to cover the [Apollo Studio API](https://studio.apollographql.com/public/apollo-platform/variant/main/explorer), so that one can manage sub graph schemas through Terraform.
@@ -41,43 +42,50 @@ for more information about installing third-party providers.
 # Contributing
 
 ## Building the provider
+
 Clone repository to: `$GOPATH/src/github.com/labd/terraform-provider-apollostudio`
 
 Then run
+
 ```sh
 make build
 ```
 
-### Update go-apollostudio-sdk
+### Update apollostudio-go-sdk
 
-The go-apollostudio-sdk always uses the latest (master) version. To update to
+The apollostudio-go-sdk always uses the latest (master) version. To update to
 the latest version:
 
 ```sh
 make update-sdk
 ```
 
-
 ## Generating Documentation
+
 This provider uses the `tfplugindocs` tool to automatically generate documentation based on the descriptions of the
 resources and fields. Install the most recent release of the tool by downloading a binary from [the tfplugindocs repository](https://github.com/hashicorp/terraform-plugin-docs/releases).
 And running
+
 ```shell
 make docs
 ```
+
 In order to ensure up to date documentation make sure to update the description fields of any and all resources upon
 creation or editing.
+
 ### Testing local changes
+
 As of terraform 0.13 testing local changes requires a little effort.
 You can run
+
 ```sh
 make build-local
 ```
+
 To build the provider with a very high version number and copy it to your terraform plugins folder (default is for Mac,
 change OS_ARCH if running Linux or change path if running Windows)
 If you set your provider source as `labd/apollostudio` and the version to your built `version` it should use the local
 provider. See also [the Terraform 0.13 upgrade guide](https://www.terraform.io/upgrade-guides/0-13.html#new-filesystem-layout-for-local-copies-of-providers)
-
 
 ## Debugging / Troubleshooting
 
@@ -128,6 +136,7 @@ git push --follow-tags
 ```
 
 ## TODO List
+
 - Create dedicated apollo graph and key for acceptance testing
 - Unit/acceptance tests should be expanded
 - Add support for other resources
