@@ -142,18 +142,6 @@ func (r *SubGraphResource) Create(ctx context.Context, req resource.CreateReques
 		return
 	}
 
-	if graph.Name != "" {
-		resp.Diagnostics.AddError(
-			"Sub Graph already exists",
-			fmt.Sprintf(
-				"Sub Graph `%s` already exits, if you want to submit pre-existing graph, "+
-					"please import the resource",
-				name,
-			),
-		)
-		return
-	}
-
 	result, err := r.client.SubmitSubGraph(
 		ctx, &apollostudio.SubmitOptions{
 			SubGraphSchema: []byte(s),
@@ -170,7 +158,10 @@ func (r *SubGraphResource) Create(ctx context.Context, req resource.CreateReques
 	if !result.WasCreated && graph.Name != "" {
 		resp.Diagnostics.AddWarning(
 			"No new subgraph was created",
-			"New sub graph was not created, submitted only",
+			fmt.Sprintf(
+				"Sub Graph `%s` already exits, did not create new sub graph",
+				name,
+			),
 		)
 	}
 
