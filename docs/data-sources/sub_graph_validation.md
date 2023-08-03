@@ -31,5 +31,3 @@ data "apollostudio_sub_graph_validation" "example" {
 
 - `changes` (String) The sub graph changes
 - `id` (String) The ID of the sub graph
-
-
