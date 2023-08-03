@@ -38,5 +38,3 @@ resource "apollostudio_sub_graph" "example" {
 - `id` (String) The ID of the sub graph
 - `revision` (String) The revision of the sub graph
 - `updated_at` (String) The last update date of the sub graph
-
-
