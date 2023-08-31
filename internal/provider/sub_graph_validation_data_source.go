@@ -10,7 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/labd/apollostudio-go-sdk/pkg/apollostudio"
+	"github.com/labd/apollostudio-go-sdk/apollostudio"
 	"github.com/labd/terraform-provider-apollostudio/internal/utils"
 )
 
@@ -34,7 +34,7 @@ type ValidationDataSourceModel struct {
 }
 
 func (d *ValidationDataSource) Metadata(
-	ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse,
+	_ context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse,
 ) {
 	resp.TypeName = req.ProviderTypeName + "_sub_graph_validation"
 }
@@ -72,7 +72,7 @@ func (d *ValidationDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 }
 
 func (d *ValidationDataSource) Configure(
-	ctx context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse,
+	_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse,
 ) {
 	// Prevent panic if the provider has not been configured.
 	if req.ProviderData == nil {

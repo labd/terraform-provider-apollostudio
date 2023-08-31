@@ -3,7 +3,7 @@ package utils
 import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	sdkresource "github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/labd/apollostudio-go-sdk/pkg/apollostudio"
+	"github.com/labd/apollostudio-go-sdk/apollostudio"
 )
 
 func NewRetryableError(err error) *sdkresource.RetryError {

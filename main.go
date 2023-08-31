@@ -12,7 +12,7 @@ import (
 
 // Run "go generate" to format example terraform files and generate the docs for the registry/website
 
-// If you do not have terraform installed, you can remove the formatting command, but its suggested to
+// If you do not have Terraform installed, you can remove the formatting command, but its suggested to
 // ensure the documentation is formatted properly.
 //go:generate terraform fmt -recursive ./examples/
 
@@ -21,12 +21,7 @@ import (
 //go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs
 
 var (
-	// these will be set by the goreleaser configuration
-	// to appropriate values for the compiled binary
-	version string = "dev"
-
-	// goreleaser can also pass the specific commit if you want
-	// commit  string = ""
+	version = "dev"
 )
 
 func main() {
@@ -40,7 +35,7 @@ func main() {
 		Debug:   debug,
 	}
 
-	err := providerserver.Serve(context.Background(), provider.New(version), opts)
+	err := providerserver.Serve(context.Background(), provider.New(version, debug), opts)
 
 	if err != nil {
 		log.Fatal(err.Error())

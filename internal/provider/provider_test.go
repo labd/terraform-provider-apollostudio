@@ -11,7 +11,7 @@ import (
 
 var testAccProtoV5ProviderFactories = map[string]func() (tfprotov5.ProviderServer, error){
 	"apollostudio": func() (tfprotov5.ProviderServer, error) {
-		p, err := providerserver.NewProtocol5WithError(New("test")())()
+		p, err := providerserver.NewProtocol5WithError(New("test", true)())()
 		if err != nil {
 			return nil, err
 		}
