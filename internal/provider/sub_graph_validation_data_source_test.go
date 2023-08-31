@@ -8,7 +8,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/labd/apollostudio-go-sdk/pkg/apollostudio"
+	"github.com/labd/apollostudio-go-sdk/apollostudio"
 	"github.com/labd/terraform-provider-apollostudio/internal/acctest"
 	"github.com/labd/terraform-provider-apollostudio/internal/utils"
 )

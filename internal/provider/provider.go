@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"github.com/hashicorp/go-retryablehttp"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -10,48 +11,53 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/labd/apollostudio-go-sdk/pkg/apollostudio"
+	"github.com/labd/apollostudio-go-sdk/apollostudio"
 	"os"
 	"regexp"
 	"time"
 )
 
 var (
-	_ provider.Provider = &ApollostudioProvider{}
+	defaultRetryMax = 10
+
+	_ provider.Provider = &ApolloStudioProvider{}
 )
 
 const retryTimeout = 5 * time.Second
 
-// ApollostudioProvider defines the provider implementation.
-type ApollostudioProvider struct {
+// ApolloStudioProvider defines the provider implementation.
+type ApolloStudioProvider struct {
 	// version is set to the provider version on release, "dev" when the
 	// provider is built and ran locally, and "test" when running acceptance
 	// testing.
 	version string
+	// debug can be used to enable more logs
+	debug bool
 }
 
-// ApollostudioProviderModel describes the provider data model.
-type ApollostudioProviderModel struct {
+// ApolloStudioProviderModel describes the provider data model.
+type ApolloStudioProviderModel struct {
 	ApiKey   types.String `tfsdk:"api_key"`
 	GraphRef types.String `tfsdk:"graph_ref"`
 }
 
-func New(version string) func() provider.Provider {
+func New(version string, debug bool) func() provider.Provider {
 	return func() provider.Provider {
-		return &ApollostudioProvider{
+		return &ApolloStudioProvider{
 			version: version,
+			debug:   debug,
 		}
 	}
 }
 
-func (p *ApollostudioProvider) Metadata(
+func (p *ApolloStudioProvider) Metadata(
 	_ context.Context, _ provider.MetadataRequest, resp *provider.MetadataResponse,
 ) {
 	resp.TypeName = "apollostudio"
 	resp.Version = p.version
 }
 
-func (p *ApollostudioProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
+func (p *ApolloStudioProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "The Apollo Studio provider allows you to manage your Apollo Studio Graphs and Subgraphs.",
 		Attributes: map[string]schema.Attribute{
@@ -77,10 +83,10 @@ func (p *ApollostudioProvider) Schema(_ context.Context, _ provider.SchemaReques
 	}
 }
 
-func (p *ApollostudioProvider) Configure(
+func (p *ApolloStudioProvider) Configure(
 	ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse,
 ) {
-	var data ApollostudioProviderModel
+	var data ApolloStudioProviderModel
 
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {
@@ -119,12 +125,15 @@ func (p *ApollostudioProvider) Configure(
 		return
 	}
 
-	client, err := apollostudio.NewClient(
-		apollostudio.ClientOpts{
-			APIKey:   key,
-			GraphRef: ref,
-		},
-	)
+	retryClient := retryablehttp.NewClient()
+	retryClient.RetryMax = defaultRetryMax
+
+	var clientOpts = []apollostudio.ClientOpt{
+		apollostudio.WithHttpClient(retryClient.StandardClient()),
+		apollostudio.WithDebug(p.debug),
+	}
+
+	client, err := apollostudio.NewClient(key, ref, clientOpts...)
 
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -138,13 +147,13 @@ func (p *ApollostudioProvider) Configure(
 	resp.ResourceData = client
 }
 
-func (p *ApollostudioProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+func (p *ApolloStudioProvider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewValidationDataSource,
 	}
 }
 
-func (p *ApollostudioProvider) Resources(ctx context.Context) []func() resource.Resource {
+func (p *ApolloStudioProvider) Resources(_ context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewSubGraphResource,
 	}

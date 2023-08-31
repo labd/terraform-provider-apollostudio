@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/labd/apollostudio-go-sdk/pkg/apollostudio"
+	"github.com/labd/apollostudio-go-sdk/apollostudio"
 	"github.com/labd/terraform-provider-apollostudio/internal/acctest"
 	"github.com/labd/terraform-provider-apollostudio/internal/utils"
 )
@@ -148,32 +148,6 @@ func testAccCheckSubGraphResourceNotExists(name string) resource.TestCheckFunc {
 
 		if g.Name != "" {
 			return fmt.Errorf("sub graph (%s) still exists", name)
-		}
-
-		return nil
-	}
-}
-
-func testAccCheckGraphLatestBuildStatus(failure bool) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		client, err := acctest.GetClient()
-		if err != nil {
-			return err
-		}
-
-		ctx := context.Background()
-
-		b, err := client.GetLatestSchemaBuild(ctx)
-		if err != nil {
-			return err
-		}
-
-		if failure && b.Errors() == nil {
-			return fmt.Errorf("expected build to fail, but found no errors")
-		}
-
-		if !failure && b.Errors() != nil {
-			return fmt.Errorf("expected build to succeed, but found errors: %v", b.Errors())
 		}
 
 		return nil

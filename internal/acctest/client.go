@@ -1,7 +1,7 @@
 package acctest
 
 import (
-	"github.com/labd/apollostudio-go-sdk/pkg/apollostudio"
+	"github.com/labd/apollostudio-go-sdk/apollostudio"
 	"os"
 )
 
@@ -9,12 +9,7 @@ func GetClient() (*apollostudio.Client, error) {
 	key := os.Getenv("APOLLO_API_KEY")
 	ref := os.Getenv("APOLLO_GRAPH_REF")
 
-	client, err := apollostudio.NewClient(
-		apollostudio.ClientOpts{
-			APIKey:   key,
-			GraphRef: ref,
-		},
-	)
+	client, err := apollostudio.NewClient(key, ref)
 
 	if err != nil {
 		return nil, err

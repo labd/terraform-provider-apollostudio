@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	sdkresource "github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/labd/apollostudio-go-sdk/pkg/apollostudio"
+	"github.com/labd/apollostudio-go-sdk/apollostudio"
 	"github.com/labd/terraform-provider-apollostudio/internal/utils"
 )
 
@@ -43,7 +43,7 @@ type SubGraphResourceModel struct {
 }
 
 func (r *SubGraphResource) Metadata(
-	ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse,
+	_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse,
 ) {
 	resp.TypeName = req.ProviderTypeName + "_sub_graph"
 }
@@ -94,7 +94,7 @@ func (r *SubGraphResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 }
 
 func (r *SubGraphResource) Configure(
-	ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse,
+	_ context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse,
 ) {
 	if req.ProviderData == nil {
 		return
