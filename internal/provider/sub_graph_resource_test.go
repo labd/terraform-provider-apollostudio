@@ -47,6 +47,17 @@ func TestAccSubGraph_basic(t *testing.T) {
 						resource.TestCheckResourceAttr(n, "url", url),
 					),
 				},
+				{
+					Config: testAccSubGraphConfigNoURL("fruits_sub_graph", schema, name2),
+					Check: resource.ComposeTestCheckFunc(
+						testAccCheckSubGraphResourceExists(n, &graph),
+						testAccCheckSubGraphAttributes(&graph, name2),
+						testAccCheckSubGraphResourceNotExists(name1),
+						resource.TestCheckResourceAttr(n, "schema", schema),
+						resource.TestCheckResourceAttr(n, "name", name2),
+						resource.TestCheckNoResourceAttr(n, "url"),
+					),
+				},
 			},
 		},
 	)
@@ -66,6 +77,22 @@ func testAccSubGraphConfig(res, schema, name, url string) string {
 			"schema": schema,
 			"name":   name,
 			"url":    url,
+		},
+	)
+}
+
+func testAccSubGraphConfigNoURL(res, schema, name string) string {
+	return utils.HCLTemplate(
+		`
+		resource "apollostudio_sub_graph" {{ .res }} {
+		  schema = "{{ .schema }}"
+		  name = "{{ .name }}"
+		}
+		`,
+		map[string]any{
+			"res":    res,
+			"schema": schema,
+			"name":   name,
 		},
 	)
 }

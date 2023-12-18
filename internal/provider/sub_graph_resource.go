@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -11,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	sdkresource "github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/labd/apollostudio-go-sdk/apollostudio"
 	"github.com/labd/terraform-provider-apollostudio/internal/utils"
 )
@@ -192,7 +192,7 @@ func (r *SubGraphResource) Read(ctx context.Context, req resource.ReadRequest, r
 	if state.ID.IsNull() {
 		state.ID = types.StringValue(name)
 	}
-	if state.URL.IsNull() {
+	if state.URL.IsNull() && result.URL != "" {
 		state.URL = types.StringValue(result.URL)
 	}
 	if state.Schema.IsNull() {
@@ -228,8 +228,8 @@ func (r *SubGraphResource) Update(ctx context.Context, req resource.UpdateReques
 	name := plan.Name.ValueString()
 	url := plan.URL.ValueString()
 
-	err := sdkresource.RetryContext(
-		ctx, retryTimeout, func() *sdkresource.RetryError {
+	err := retry.RetryContext(
+		ctx, retryTimeout, func() *retry.RetryError {
 			var err error
 			_, err = r.client.SubmitSubGraph(
 				ctx, &apollostudio.SubmitOptions{
