@@ -1,3 +1,0 @@
-kind: Fixed
-body: Fixed bad interpolation of empty url in sub_graph_resource when not set
-time: 2023-12-15T11:20:55.969994027+01:00
