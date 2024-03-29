@@ -3,8 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
-	"strings"
-
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -12,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/labd/apollostudio-go-sdk/apollostudio"
 	"github.com/labd/terraform-provider-apollostudio/internal/utils"
+	"strings"
 )
 
 var _ datasource.DataSource = &ValidationDataSource{}
@@ -27,10 +27,11 @@ type ValidationDataSource struct {
 
 // ValidationDataSourceModel describes the data source data model.
 type ValidationDataSourceModel struct {
-	ID      types.String `tfsdk:"id"`
-	Schema  types.String `tfsdk:"schema"`
-	Name    types.String `tfsdk:"name"`
-	Changes types.String `tfsdk:"changes"`
+	ID       types.String   `tfsdk:"id"`
+	Schema   types.String   `tfsdk:"schema"`
+	Name     types.String   `tfsdk:"name"`
+	Changes  types.String   `tfsdk:"changes"`
+	Timeouts timeouts.Value `tfsdk:"timeouts"`
 }
 
 func (d *ValidationDataSource) Metadata(
@@ -39,7 +40,7 @@ func (d *ValidationDataSource) Metadata(
 	resp.TypeName = req.ProviderTypeName + "_sub_graph_validation"
 }
 
-func (d *ValidationDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+func (d *ValidationDataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "This data source is used to apply schema validation checks. " +
 			"It applies Composition and Operation checks to the provided schema. If the schema is invalid, " +
@@ -67,6 +68,9 @@ func (d *ValidationDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 				MarkdownDescription: "The sub graph changes",
 				Computed:            true,
 			},
+		},
+		Blocks: map[string]schema.Block{
+			"timeouts": timeouts.Block(ctx),
 		},
 	}
 }
@@ -107,6 +111,14 @@ func (d *ValidationDataSource) Read(ctx context.Context, req datasource.ReadRequ
 
 	s := state.Schema.ValueString()
 	name := state.Name.ValueString()
+
+	readTimeout, diagErr := state.Timeouts.Read(ctx, defaultTimeout)
+	if diagErr.HasError() {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, readTimeout)
+	defer cancel()
 
 	// we are checking if schema with provided name already exists
 	// because validation may succeed even if provided schema does exist
