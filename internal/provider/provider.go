@@ -19,11 +19,11 @@ import (
 
 var (
 	defaultRetryMax = 10
+	defaultTimeout  = 2 * time.Minute
+	retryTimeout    = 5 * time.Second
 
 	_ provider.Provider = &ApolloStudioProvider{}
 )
-
-const retryTimeout = 5 * time.Second
 
 // ApolloStudioProvider defines the provider implementation.
 type ApolloStudioProvider struct {
