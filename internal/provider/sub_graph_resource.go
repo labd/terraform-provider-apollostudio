@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework-timeouts/resource/timeouts"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"time"
 
@@ -33,13 +34,14 @@ type SubGraphResource struct {
 
 // SubGraphResourceModel describes the resource data model.
 type SubGraphResourceModel struct {
-	URL       types.String `tfsdk:"url"`
-	Schema    types.String `tfsdk:"schema"`
-	Name      types.String `tfsdk:"name"`
-	ID        types.String `tfsdk:"id"`
-	Revision  types.String `tfsdk:"revision"`
-	CreatedAt types.String `tfsdk:"created_at"`
-	UpdatedAt types.String `tfsdk:"updated_at"`
+	URL       types.String   `tfsdk:"url"`
+	Schema    types.String   `tfsdk:"schema"`
+	Name      types.String   `tfsdk:"name"`
+	ID        types.String   `tfsdk:"id"`
+	Revision  types.String   `tfsdk:"revision"`
+	CreatedAt types.String   `tfsdk:"created_at"`
+	UpdatedAt types.String   `tfsdk:"updated_at"`
+	Timeouts  timeouts.Value `tfsdk:"timeouts"`
 }
 
 func (r *SubGraphResource) Metadata(
@@ -48,7 +50,7 @@ func (r *SubGraphResource) Metadata(
 	resp.TypeName = req.ProviderTypeName + "_sub_graph"
 }
 
-func (r *SubGraphResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *SubGraphResource) Schema(ctx context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "This resource is used to manage subgraphs within the Federated Apollo schema. " +
 			"More information about the Apollo Federation subgraphs can be found " +
@@ -90,6 +92,9 @@ func (r *SubGraphResource) Schema(_ context.Context, _ resource.SchemaRequest, r
 				Computed:            true,
 			},
 		},
+		Blocks: map[string]schema.Block{
+			"timeouts": timeouts.BlockAll(ctx),
+		},
 	}
 }
 
@@ -125,6 +130,14 @@ func (r *SubGraphResource) Create(ctx context.Context, req resource.CreateReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	createTimeout, diagErr := plan.Timeouts.Create(ctx, defaultTimeout)
+	if diagErr.HasError() {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, createTimeout)
+	defer cancel()
 
 	s := plan.Schema.ValueString()
 	name := plan.Name.ValueString()
@@ -181,6 +194,14 @@ func (r *SubGraphResource) Read(ctx context.Context, req resource.ReadRequest, r
 		return
 	}
 
+	readTimeout, diagErr := state.Timeouts.Read(ctx, defaultTimeout)
+	if diagErr.HasError() {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, readTimeout)
+	defer cancel()
+
 	name := state.Name.ValueString()
 	result, err := r.client.GetSubGraph(ctx, name)
 
@@ -223,6 +244,14 @@ func (r *SubGraphResource) Update(ctx context.Context, req resource.UpdateReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	updateTimeout, diagErr := plan.Timeouts.Update(ctx, defaultTimeout)
+	if diagErr.HasError() {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, updateTimeout)
+	defer cancel()
 
 	s := plan.Schema.ValueString()
 	name := plan.Name.ValueString()
@@ -286,6 +315,14 @@ func (r *SubGraphResource) Delete(ctx context.Context, req resource.DeleteReques
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	deleteTimeout, diagErr := plan.Timeouts.Delete(ctx, defaultTimeout)
+	if diagErr.HasError() {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, deleteTimeout)
+	defer cancel()
 
 	name := plan.Name.ValueString()
 	err := r.client.RemoveSubGraph(ctx, name)
