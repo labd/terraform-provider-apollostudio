@@ -11,8 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
           cache: true
@@ -22,8 +22,8 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
           cache: true
@@ -48,14 +48,14 @@ jobs:
           - '1.1.*'
           - '1.2.*'
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
 
-      - uses: hashicorp/setup-terraform@v2
+      - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ matrix.terraform }}
           terraform_wrapper: false
@@ -78,12 +78,12 @@ jobs:
       pull-requests: write
       actions: write
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Prepare release
-        uses: labd/changie-release-action@v0.2.0
+        uses: labd/changie-release-action@v0.3.1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           release-workflow: 'release.yaml'
