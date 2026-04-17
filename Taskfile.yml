@@ -10,7 +10,7 @@ tasks:
         platforms: [darwin]
     vars:
       VERSION: 99.0.0
-      NAME: commercetools
+      NAME: apollostudio
       PLATFORM:
         sh: echo "$(go env GOOS)_$(go env GOARCH)"
 
