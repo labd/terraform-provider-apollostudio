@@ -1,8 +1,9 @@
 package acctest
 
 import (
-	"github.com/labd/apollostudio-go-sdk/apollostudio"
 	"os"
+
+	"github.com/labd/apollostudio-go-sdk/apollostudio"
 )
 
 func GetClient() (*apollostudio.Client, error) {
