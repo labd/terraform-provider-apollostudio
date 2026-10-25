@@ -2,6 +2,10 @@ package provider
 
 import (
 	"context"
+	"os"
+	"regexp"
+	"time"
+
 	"github.com/hashicorp/go-retryablehttp"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -12,9 +16,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/labd/apollostudio-go-sdk/apollostudio"
-	"os"
-	"regexp"
-	"time"
 )
 
 var (

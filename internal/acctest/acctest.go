@@ -2,9 +2,10 @@ package acctest
 
 import (
 	"context"
+	"os"
+
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"os"
 )
 
 func ConfigureProvider(p tfprotov5.ProviderServer) error {

@@ -3,6 +3,8 @@ package provider
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/hashicorp/terraform-plugin-framework-timeouts/datasource/timeouts"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -11,7 +13,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/labd/apollostudio-go-sdk/apollostudio"
 	"github.com/labd/terraform-provider-apollostudio/internal/utils"
-	"strings"
 )
 
 var _ datasource.DataSource = &ValidationDataSource{}
